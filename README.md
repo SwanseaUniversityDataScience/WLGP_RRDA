@@ -35,7 +35,7 @@ Using this RRDA, we:
 
 ## 📃 Funding
 
-This work was supported by the ADR Wales programme of work. ADR Wales, part of the ADR UK investment, unites research expertise from Swansea University Medical School and WISERD (Wales Institute of Social and Economic Research and Data) at Cardiff University with analysts from Welsh Government. ADR UK is funded by the Economic and Social Research Council (ESRC), part of UK Research and Innovation. This research was supported by ESRC funding, including Administrative Data Research Wales (ES/W012227/1)
+This work was supported by the ADR Wales programme of work. ADR Wales, part of the ADR UK investment, unites research expertise from Swansea University Medical School and WISERD (Wales Institute of Social and Economic Research and Data) at Cardiff University with analysts from Welsh Government. ADR UK is funded by the Economic and Social Research Council (ESRC), part of UK Research and Innovation. This research was supported by ESRC funding, including Administrative Data Research Wales (ES/W012227/1).
 
 ## ❤ Acknowledgements
 
@@ -43,7 +43,7 @@ This study makes use of anonymised data held in the Secure Anonymised Informatio
 
 ## 🤝 Project approval
 
-All research has been completed under the permission and approval of the SAIL independent Information Governance Review Panel (IGRP) project number 0911. Further details of this process can be found on the SAIL Databank website (https://saildatabank.com/)
+All research has been completed under the permission and approval of the SAIL independent Information Governance Review Panel (IGRP) project number 0911. Further details of this process can be found on the SAIL Databank website (https://saildatabank.com/).
 
 
 ## ♻️ License
@@ -58,3 +58,4 @@ This work is licensed under a
 [cc-by]: http://creativecommons.org/licenses/by/4.0/
 [cc-by-image]: https://i.creativecommons.org/l/by/4.0/88x31.png
 [cc-by-shield]: https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg
+
