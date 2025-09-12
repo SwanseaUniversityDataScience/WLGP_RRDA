@@ -1,8 +1,8 @@
 
-<p float="center">
-  <img src="Logo/ADRW_PDS.png" width="700" />
+<p align="center">
+  <img src="ADRW.png" width="400" />
+  <img src="PDS.png" width="400" />
 </p>
-
 
 
 # Creating a Research-Ready Data Asset version of primary care data for Wales and investigating the impact of COVID-19 on utilisation of primary care services
@@ -58,4 +58,5 @@ This work is licensed under a
 [cc-by]: http://creativecommons.org/licenses/by/4.0/
 [cc-by-image]: https://i.creativecommons.org/l/by/4.0/88x31.png
 [cc-by-shield]: https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg
+
 
