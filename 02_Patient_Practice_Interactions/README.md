@@ -24,6 +24,9 @@ Provides a more specific classification within each access mode, detailing the m
 ### 4. Interaction Details Layer  
 Offers a granular breakdown of specific activities or procedures recorded in the interaction, ensuring key clinical activities are accurately represented.  
 
+<p float="center">
+  <img src="02_Patient_Practice_Interactions/P1.png" width="700" />
+</p>
 
 ## Implementation  
 
@@ -36,3 +39,4 @@ The resulting patient–practice interaction related variables can be combined w
 - Categorise daily patient activity (person–day events).  
 - Classify interactions into **key activity types** (consultations, prescriptions, vaccinations, administrative events, etc.).  
 - Support longitudinal analyses of service delivery and patient access patterns.  
+
