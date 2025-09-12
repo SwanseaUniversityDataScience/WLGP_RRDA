@@ -1,7 +1,6 @@
 
-<p align="center">
-  <img src="Logo/ADRW.png" width="400" />
-  <img src="Logo/PDS.png" width="400" />
+<p float="center">
+  <img src="Logo/ADRW_PDS_V2.png" width="700" />
 </p>
 
 
@@ -58,6 +57,7 @@ This work is licensed under a
 [cc-by]: http://creativecommons.org/licenses/by/4.0/
 [cc-by-image]: https://i.creativecommons.org/l/by/4.0/88x31.png
 [cc-by-shield]: https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg
+
 
 
 
