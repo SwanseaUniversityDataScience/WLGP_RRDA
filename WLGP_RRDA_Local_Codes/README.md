@@ -11,7 +11,6 @@ In collaboration with the **SAIL Databank** and **Digital Health and Care Wales 
 Additional EMIS clinical and prescription codes were obtained from the **UK Biobank**, and further Vision and Read V2 codes were collated from external sources.  
 See the main project documentation for more details.  
 
----
 
 ## Code Type Definitions  
 
@@ -35,13 +34,7 @@ The WLGP RRDA look-up table includes the following code types:
 - **Additional EMIS**  
   EMIS codes identified from the UK Biobank that were not included in the DHCW/SAIL lists.  
 
----
 
 ## Contents of this Directory  
 
 This directory contains the lists of known **Vision**, **EMIS**, **Additional Read or Vision**, and **Additional EMIS** codes, as extracted in 2023.  
-
----
-
-
-
