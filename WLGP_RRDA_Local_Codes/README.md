@@ -1,5 +1,5 @@
 
-# Local Codes in WLGP RRDA
+# Local codes in WLGP RRDA
 
 Most clinical events in the **Welsh Longitudinal General Practice (WLGP)** data are recorded using the official **Read V2** coding system at the 5-character level. However, a proportion of events are recorded using alternative or **local coding systems**.  
 
@@ -12,7 +12,7 @@ Additional EMIS clinical and prescription codes were obtained from the **UK Biob
 See the main project documentation for more details.  
 
 
-## Code Type Definitions  
+## Code type definitions  
 
 The WLGP RRDA look-up table includes the following code types:  
 
@@ -35,6 +35,7 @@ The WLGP RRDA look-up table includes the following code types:
   EMIS codes identified from the UK Biobank that were not included in the DHCW/SAIL lists.  
 
 
-## Contents of this Directory  
+## Contents of this directory  
 
 This directory contains the lists of known **Vision**, **EMIS**, **Additional Read or Vision**, and **Additional EMIS** codes, as extracted in 2023.  
+
