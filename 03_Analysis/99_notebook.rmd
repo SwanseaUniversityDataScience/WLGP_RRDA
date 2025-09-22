@@ -1,0 +1,780 @@
+---
+title  : "[SAIL 1545] GP Coverage and Activity Trends, 1990 to 2024"
+date   : "Date compiled: `r format(Sys.time(), '%a %d %B %Y')`"
+author : "Stuart Bedston, Hoda Abbasizanjani"
+---
+
+```{r setup, include=FALSE}
+source("clear_workspace.r")
+
+options(
+	knitr.kable.NA = '',
+	openxlsx.numFmt = "#,##0"
+)
+
+knitr::opts_chunk$set(
+	fig.width  = 10,
+	fig.height = 8,
+	fig.align  = "center",
+	echo       = FALSE,
+	message    = FALSE,
+	warning    = FALSE
+)
+```
+
+## Dear SAIL Reviewer
+
+Please make sure you've had a look at the README.
+
+## 1. Research Aim
+
+
+To establish the trends for various GP activities from 2000, and assess whether they
+have returned to pre-pandemic levels.
+
+To understand this, we first want to evidence any trends and demographic
+associations with WLGP population coverage from 1990 onwards.
+
+
+## 2. Data Sources
+
+- **WDSD** - Welsh Demographic Service Dataset
+- **WLGP** - Welsh Longitudinal General Practice data
+
+
+## 3. Study Design
+
+Observational retrospective cohort study of Welsh residents attending
+Welsh GP practices between Jan 1990 and Dec 2024.
+
+For analysing GP registration coverage we use all years, and fit a series of
+Generalised Additive Mixed Models (GAMMs) to assess association with
+demographics and take into account the longitudinal and nature of the data.
+
+For GP activity from 2000 onwards, the analytical approach is to classify each
+day someone engages with their GP practice into one the following types of activity:
+
+- Consultations
+- Prescription only events
+- Vaccinations
+- Certificates
+- Patient reviews and patient monitoring
+- Screening or assessments
+- Admin only events
+- Failed encounters
+
+We then look at the trends separately for each type of activity before, during,
+and after the pandemic. With GAMMs being
+fitted on the 'before' and 'after' periods of the pandemic to determine if
+we have returned to levels expected if the pandemic had not occurred.
+
+GAMM specification included:
+
+ - Response variable is average daily count for a given month
+ - Counts follow a negative binomial distribution
+ - Offset by log of the GP registered annual population size
+ - Covariate structure includes:
+    - A cyclic spline to capture the seasonality of the trend each year
+    - A thin plate regression spline to capture the overall trend across the whole study window
+ - AR(1) correlation structure for the residuals
+
+## 4. Cohort
+
+```{r}
+qload(s_drive("cohort_summary.qsm"))
+# t_cohort_overall
+# t_cohort_year_total
+# t_cohort_year_sex
+# t_cohort_year_wimd
+# t_cohort_year_age
+```
+
+
+#### Table: Cohort overall summary - all those ever living in Wales between 1990 and 2024
+
+- All those living in Wales between 1990 and 2024, those registered with a SAIL GP, and the number of GP events.
+- We are effectively using all records available in WDSD and WLGP for which an ALF has wob, sex and lsoa recorded.
+- WIMD: counts added together will be greater than the Total, this is because anyone who has ever lived in each quintile over time is counted for that quintile i.e. for WIMD the numbers can be read as "how many people have ever lived in WIMD quintile X".
+- All counts rounded to nearest 10
+- Also saved as `t_cohort_overall_summary.xlsx`
+
+```{r}
+t_cohort_overall %>%
+    mutate(
+        pop_p   = percent(pop_p,   accuracy = 0.1),
+        gpreg_p = percent(gpreg_p, accuracy = 0.1),
+        event_p = percent(event_p, accuracy = 0.1)
+    ) %>%
+    kable_pretty(align = "llrrrrrr")
+
+# write to xlsx
+wb <- createWorkbook()
+addWorksheet(wb, 1)
+
+# write table
+t_cohort_overall %>%
+mutate(
+    pop_p   = round_half_up(pop_p,   2),
+    gpreg_p = round_half_up(gpreg_p, 2),
+    event_p = round_half_up(event_p, 2)
+) %>%
+writeData(wb, 1, x = .)
+
+# formatting
+p_cols <- which(str_detect(names(t_cohort_overall), "_p$"))
+p_style <- createStyle(numFmt = "#,##0.0%")
+data_rows <- (1:nrow(t_cohort_overall)) + 1
+addStyle(wb, 1, cols = p_cols, rows = data_rows, style = p_style, gridExpand = TRUE)
+setColWidths(wb, 1, cols = 1:ncol(t_cohort_overall), widths = "auto")
+
+# write to file
+saveWorkbook(wb, s_drive("request-out/t_cohort_overall_summary.xlsx"), overwrite = TRUE)
+```
+
+#### Figure: Compare GP consultation trends, WLGP vs publicly-available PHW rates.
+
+- Counts rounded to nearest 10
+
+```{r}
+qload(s_drive("compare_wlgp_statswales.qsm"))
+p_compare_consultation
+```
+
+
+## 5. SAIL-GP linkage coverage
+
+```{r}
+qload(s_drive("reg_coverage_analysis.qsm"))
+```
+
+
+#### Table: Annual population and SAIL GP registered people counts from 1990 to 2024
+
+- Total number of people living in Wales each year, as well as those for who we have GP coverage.
+- See `t_reg_coverage_summaries.xlsx` for the same counts, as well as counts stratified by sex, wimd and age on separate worksheets.
+- All counts rounded to nearest 10.
+
+```{r}
+gp_reg_labels <- c(
+    "no_link"        = "No linked records",
+    "shared_backlog" = "Linked (shared via backlog)",
+    "shared_active"  = "Linked (actively shared)"
+)
+
+# output all underlying counts as an Excel workbook
+wb <- createWorkbook()
+
+# write total
+addWorksheet(wb, "total")
+
+t_coverage_total <-
+    d_reg_overall_summary %>%
+    select(mid_year, gp_reg_cat, n, p) %>%
+    mutate(gp_reg_cat = fct_recode(gp_reg_cat, !!!gp_reg_labels)) %>%
+    pivot_wider(names_from = gp_reg_cat, values_from = c(n, p), names_glue = "{gp_reg_cat}_total_{.value}")
+
+t_coverage_total %>%
+writeData(wb, sheet = "total", x = .)
+
+t_coverage_total %>%
+mutate(across(ends_with("_p"), ~percent(.x, accuracy = 0.1))) %>%
+kable_pretty()
+
+
+# write sex
+addWorksheet(wb, "sex")
+
+t_coverage_sex <-
+    d_reg_sex_summary %>%
+    select(mid_year, sex, gp_reg_cat, n) %>%
+    mutate(
+        sex = str_to_lower(sex),
+        gp_reg_cat = fct_recode(gp_reg_cat, !!!gp_reg_labels)
+    ) %>%
+    pivot_wider(
+        names_from = c(sex, gp_reg_cat),
+        values_from = n,
+        names_glue = "{gp_reg_cat}_{sex}_{.value}",
+        names_vary = "slowest"
+    ) %>%
+    left_join(t_coverage_total, join_by(mid_year)) %>%
+    select(mid_year, matches("total_n"), matches("_n$")) %>%
+    select(mid_year, matches("no_link"), matches("shared_backlog"), matches("shared_active"))
+
+t_coverage_sex %>%
+writeData(wb, sheet = "sex", x = .)
+
+
+# write age
+addWorksheet(wb, "age")
+
+t_coverage_age <-
+    d_reg_age_summary %>%
+    select(mid_year, age, gp_reg_cat, n) %>%
+    mutate(
+        age = str_to_lower(age),
+        gp_reg_cat = fct_recode(gp_reg_cat, !!!gp_reg_labels)
+    ) %>%
+    pivot_wider(
+        names_from = c(age, gp_reg_cat),
+        values_from = n,
+        names_glue = "{gp_reg_cat}_age{age}_{.value}",
+        names_vary = "slowest"
+    ) %>%
+    left_join(t_coverage_total, join_by(mid_year)) %>%
+    select(mid_year, matches("total_n"), matches("age.*_n")) %>%
+    select(mid_year, matches("no_link"), matches("shared_backlog"), matches("shared_active"))
+
+t_coverage_age %>%
+writeData(wb, sheet = "age", x = .)
+
+
+# write wimd
+addWorksheet(wb, "wimd")
+
+t_coverage_wimd <-
+    d_reg_wimd_summary %>%
+    select(mid_year, wimd, gp_reg_cat, n) %>%
+    mutate(
+        gp_reg_cat = fct_recode(gp_reg_cat, !!!gp_reg_labels)
+    ) %>%
+    pivot_wider(
+        names_from = c(wimd, gp_reg_cat),
+        values_from = n,
+        names_glue = "{gp_reg_cat}_wimd{wimd}_{.value}",
+        names_vary = "slowest"
+    ) %>%
+    left_join(t_coverage_total, join_by(mid_year)) %>%
+    select(mid_year, matches("total_n"), matches("wimd.*_n")) %>%
+    select(mid_year, matches("no_link"), matches("shared_backlog"), matches("shared_active"))
+
+t_coverage_wimd %>%
+writeData(wb, sheet = "wimd", x = .)
+
+
+# write healthboard
+addWorksheet(wb, "healthboard")
+
+lkp_hb <- c(
+    "betsi_cadwaladr"   = "Betsi Cadwaladr",
+    "powys"             = "Powys",
+    "hywel_dda"         = "Hywel Dda",
+    "aneurin_bevan"     = "Aneurin Bevan",
+    "cwm taf_morgannwg" = "Cwm Taf Morgannwg",
+    "swansea_bay"       = "Swansea Bay",
+    "cardiff_and_vale"  = "Cardiff and Vale"
+)
+
+t_coverage_healthboard <-
+    d_reg_healthboard_summary %>%
+    select(mid_year, healthboard, gp_reg_cat, n) %>%
+    mutate(
+        healthboard = factor(healthboard, lkp_hb, names(lkp_hb)),
+        gp_reg_cat = fct_recode(gp_reg_cat, !!!gp_reg_labels)
+    ) %>%
+    pivot_wider(
+        names_from = c(healthboard, gp_reg_cat),
+        values_from = n,
+        names_glue = "{gp_reg_cat}_{healthboard}_{.value}",
+        names_vary = "slowest"
+    ) %>%
+    left_join(t_coverage_total, join_by(mid_year)) %>%
+    select(mid_year, matches("total_n"), matches("_n$")) %>%
+    select(mid_year, matches("no_link"), matches("shared_backlog"), matches("shared_active"))
+
+t_coverage_healthboard %>%
+writeData(wb, sheet = "healthboard", x = .)
+
+# formatting
+setColWidths(wb, "total",       cols = 1:(ncol(t_coverage_total) + 2),       widths = "auto")
+setColWidths(wb, "sex",         cols = 1:(ncol(t_coverage_sex) + 2),         widths = "auto")
+setColWidths(wb, "wimd",        cols = 1:(ncol(t_coverage_wimd) + 2),        widths = "auto")
+setColWidths(wb, "age",         cols = 1:(ncol(t_coverage_age) + 2),         widths = "auto")
+setColWidths(wb, "healthboard", cols = 1:(ncol(t_coverage_healthboard) + 2), widths = "auto")
+
+# write to file
+saveWorkbook(wb, s_drive("request-out/t_reg_coverage_summaries.xlsx"), overwrite = TRUE)
+```
+
+
+#### Figure: Mid-year population of Wales by SAIL-GP registration status from 1990 to 2024, stratified by health board
+
+- Saved as `p_reg_coverage.png`
+- Dashed lines represent ONS mid-year population estimates for 2001 to 2024
+
+```{r, fig.height = 10}
+p_reg_main
+
+ggsave(
+    p_reg_main,
+    width = 7.5,
+    height = 8.75,
+    file = s_drive("request-out/p_reg_coverage.png")
+)
+```
+
+
+#### Figure: SAIL-GP registration status by sex.
+
+```{r}
+plot_layout <- "
+AB
+CC
+"
+
+plot_heights <- c(0.9, 0.1)
+
+p_reg_sex_n +
+p_reg_sex_p +
+guide_area() +
+plot_layout(guides = "collect", design = plot_layout, heights = plot_heights)
+```
+
+
+#### Figure: SAIL-GP registration status by age.
+
+```{r}
+p_reg_age_n +
+p_reg_age_p +
+guide_area() +
+plot_layout(guides = "collect", design = plot_layout, heights = plot_heights)
+```
+
+
+#### Figure: SAIL-GP registration status by wimd.
+
+```{r}
+p_reg_wimd_n +
+p_reg_wimd_p +
+guide_area() +
+plot_layout(guides = "collect", design = plot_layout, heights = plot_heights)
+```
+
+
+
+#### Figure: Odds ratios of SAIL-GP registration status.
+
+- Odds ratio estimates are also in `t_reg_coverage_odds_ratios.xlsx`
+
+```{r}
+p_reg_coef
+
+# setup xlsx workbook
+wb <- createWorkbook()
+addWorksheet(wb, "Sheet1")
+writeData(wb, 1, d_reg_coef)
+saveWorkbook(wb, s_drive("request-out/t_reg_coverage_odds_ratios.xlsx"), overwrite = TRUE)
+```
+
+
+## 6. GP Activity Trends
+
+- All the following analysis and modelling results are based on counts found in `t_gp_activity_counts.xlsx`
+- Each sheet contains the monthly counts from 2000 to 2024 for one type of GP activity
+- All observed counts rounded to nearest 10
+- All rates are based on rounded counts
+- Predicted values are left as is
+- For all model-estimated rate ratios see `t_gp_activity_rate_ratios.xlsx`
+
+
+```{r}
+qload(s_drive("gp_activity_explore.qsm"))
+qload(s_drive("gp_activity_analysis.qsm"))
+
+
+plot_gam_fit <- function(gp_act) {
+    # gp_act <- "consultation"
+    l_negbin[[gp_act]]$df %>%
+    mutate(
+        rate = rate / gpreg_n * 10000,
+        pred = pred / gpreg_n * 10000,
+        lwr_ci = lwr_ci / gpreg_n * 10000,
+        upr_ci = upr_ci / gpreg_n * 10000
+    ) %>%
+    ggplot(aes(x = event_dt)) +
+    geom_ribbon(aes(ymin = lwr_ci, ymax = upr_ci), colour = NA, fill = "blue", alpha = 0.25) +
+    geom_line(aes(x = event_dt, y = pred), colour = "blue") +
+    geom_line(aes(x = event_dt, y = rate)) +
+    scale_x_date(
+        name = "Month",
+        breaks = seq(from = ymd("2000-01-01"), to = ymd("2025-01-01"), by = "2 years"),
+        date_labels = "%b\n%Y",
+        expand = expansion()
+    ) +
+    scale_y_continuous(
+        name = "Average Daily Rate per 100,000",
+        limits = c(0, NA),
+        labels = comma,
+        breaks = breaks_pretty(3),
+        expand = expansion(mult = c(0.05, 0.1))
+    ) +
+    theme_bw() +
+    theme(
+        legend.position = "none",
+        panel.grid.minor = element_blank()
+    )
+}
+
+t_gam_coef <- function(gp_act) {
+    year2020_2024 <- str_c("year_f", 2014:2024)
+
+    d_nb_coef %>%
+    filter(activity_cat %in% gp_act) %>%
+    filter(xvar %in% year2020_2024) %>%
+    mutate(
+        rr = round_half_up(rr, 3),
+        lwr_ci = round_half_up(lwr_ci, 3),
+        upr_ci = round_half_up(upr_ci, 3)
+    )
+}
+
+# prepare rectangular table of observed activity counts
+d_negbin_fitted <-
+    l_negbin %>%
+    purrr::map(~ .x$df) %>%
+    bind_rows() %>%
+    mutate(
+        days_in_month = days_in_month(event_dt)
+    ) %>%
+    select(
+        activity_cat,
+        event_month = event_dt,
+        obs_count = event_n,
+        days_in_month,
+        avg_daily_rate = rate,
+        predicted_avg_count = pred,
+        lwr_ci,
+        upr_ci,
+        gpreg_n
+    ) %>%
+    mutate(
+        avg_daily_rate = round_half_up(avg_daily_rate, 3),
+        predicted_avg_count = round_half_up(predicted_avg_count, 2),
+        lwr_ci = round_half_up(lwr_ci, 2),
+        upr_ci = round_half_up(upr_ci, 2)
+    )
+
+# setup xlsx workbook
+wb <- createWorkbook()
+
+addWorksheet(wb, "admin_only")
+addWorksheet(wb, "certificate")
+addWorksheet(wb, "consultation")
+addWorksheet(wb, "failed_encounter")
+addWorksheet(wb, "patient_review_monitor")
+addWorksheet(wb, "prescription_only")
+addWorksheet(wb, "screening_assessment")
+addWorksheet(wb, "vaccination")
+
+writeData(wb, "admin_only",             x = d_negbin_fitted %>% filter(activity_cat == "admin_only"))
+writeData(wb, "certificate",            x = d_negbin_fitted %>% filter(activity_cat == "certificate"))
+writeData(wb, "consultation",           x = d_negbin_fitted %>% filter(activity_cat == "consultation"))
+writeData(wb, "failed_encounter",       x = d_negbin_fitted %>% filter(activity_cat == "failed_encounter"))
+writeData(wb, "patient_review_monitor", x = d_negbin_fitted %>% filter(activity_cat == "patient_review_monitor"))
+writeData(wb, "prescription_only",      x = d_negbin_fitted %>% filter(activity_cat == "prescription_only"))
+writeData(wb, "screening_assessment",   x = d_negbin_fitted %>% filter(activity_cat == "screening_assessment"))
+writeData(wb, "vaccination",            x = d_negbin_fitted %>% filter(activity_cat == "vaccination"))
+
+# write to file
+saveWorkbook(wb, s_drive("request-out/t_gp_activity_counts.xlsx"), overwrite = TRUE)
+```
+
+
+### 6.1 Consultation
+
+- See `consultation` sheet in file `t_gp_activity_counts.xlsx` for underlying data
+
+#### Figure: STL decomposition of rates
+
+- Rate = trend + season_year + remainder
+
+```{r, fig.height=8}
+p_activity_stl$consultation
+```
+
+#### Figure: Autocorrelation Function (ACF)
+
+```{r, fig.height=2}
+p_activity_acf$consultation
+```
+
+#### Figure: GAMM-based fitted trend
+
+```{r, fig.height=6}
+plot_gam_fit("consultation")
+```
+
+#### Figure: GAMM smoothing terms for Month and Time
+
+```{r, fig.height = 4}
+l_negbin$consultation$p_smooth_month +
+l_negbin$consultation$p_smooth_index +
+plot_layout(ncol = 2)
+```
+
+#### Table: Estimated rate ratios for years 2014 to 2024 compared to 2019
+
+```{r}
+t_gam_coef("consultation") %>% kable_pretty()
+```
+
+
+### 6.2 Prescription Only
+
+- See `prescription_only` sheet in file `t_gp_activity_counts.xlsx` for underlying data
+
+#### Figure: STL decomposition of rates
+
+- Rate = trend + season_year + remainder
+
+```{r, fig.height=8}
+p_activity_stl$prescription_only
+```
+
+#### Figure: Autocorrelation Function (ACF)
+
+```{r, fig.height=2}
+p_activity_acf$prescription_only
+```
+
+#### Figure: GAMM-based fitted trend
+
+```{r, fig.height=6}
+plot_gam_fit("prescription_only")
+```
+
+#### Figure: GAMM smoothing terms for Month and Time
+
+```{r, fig.height=4}
+l_negbin$prescription_only$p_smooth_month +
+l_negbin$prescription_only$p_smooth_index +
+plot_layout(ncol = 2)
+```
+
+#### Table: Estimated rate ratios for years 2014 to 2024 compared to 2019
+
+```{r}
+t_gam_coef("prescription_only") %>% kable_pretty()
+```
+
+
+### 6.3 Vaccination
+
+- See `vaccination` sheet in file `t_gp_activity_counts.xlsx` for underlying data
+
+#### Figure: STL decomposition of rates
+
+- Rate = trend + season_year + remainder
+
+```{r, fig.height=8}
+p_activity_stl$vaccination
+```
+
+#### Figure: Autocorrelation Function (ACF)
+
+```{r, fig.height=2}
+p_activity_acf$vaccination
+```
+
+#### Figure: GAMM-based fitted trend
+
+```{r, fig.height=6}
+plot_gam_fit("vaccination")
+```
+
+#### Figure: GAMM smoothing terms for Month and Time
+
+```{r, fig.height=4}
+l_negbin$vaccination$p_smooth_month +
+l_negbin$vaccination$p_smooth_index +
+plot_layout(ncol = 2)
+```
+
+#### Table: Estimated rate ratios for years 2014 to 2024 compared to 2019
+
+```{r}
+t_gam_coef("vaccination") %>% kable_pretty()
+```
+
+
+### 6.4 Patient review and monitoring
+
+- See `patient_review_monitor` sheet in file `t_gp_activity_counts.xlsx` for underlying data
+
+#### Figure: STL decomposition of rates.
+
+- Rate = trend + season_year + remainder
+
+```{r, fig.height=8}
+p_activity_stl$patient_review_monitor
+```
+
+#### Figure: Autocorrelation Function (ACF)
+
+```{r, fig.height=2}
+p_activity_acf$patient_review_monitor
+```
+
+#### Figure: GAMM-based fitted trend
+
+```{r, fig.height=6}
+plot_gam_fit("patient_review_monitor")
+```
+
+#### Figure: GAMM smoothing terms for Month and Time
+
+```{r, fig.height=4}
+l_negbin$patient_review_monitor$p_smooth_month +
+l_negbin$patient_review_monitor$p_smooth_index +
+plot_layout(ncol = 2)
+```
+
+#### Table: Estimated rate ratios for years 2014 to 2024 compared to 2019
+
+```{r}
+t_gam_coef("patient_review_monitor") %>% kable_pretty()
+```
+
+
+### 6.5 Screening and assessment
+
+- See `screening_assessment` sheet in file `t_gp_activity_counts.xlsx` for underlying data
+
+#### Figure: STL decomposition of rates
+
+- Rate = trend + season_year + remainder
+
+```{r, fig.height=8}
+p_activity_stl$screening_assessment
+```
+
+#### Figure: Autocorrelation Function (ACF)
+
+```{r, fig.height=2}
+p_activity_acf$screening_assessment
+```
+
+#### Figure: GAMM-based fitted trend
+
+```{r, fig.height=6}
+plot_gam_fit("screening_assessment")
+```
+
+#### Figure: GAMM smoothing terms for Month and Time
+
+```{r, fig.height=4}
+l_negbin$screening_assessment$p_smooth_month +
+l_negbin$screening_assessment$p_smooth_index +
+plot_layout(ncol = 2)
+```
+
+#### Table: Estimated rate ratios for years 2014 to 2024 compared to 2019
+
+```{r}
+t_gam_coef("screening_assessment") %>% kable_pretty()
+```
+
+
+### 6.6 Combined results
+
+- This section contains a repeat of the results from above but patched together
+  for the purposes of squeezing the results into our research article
+
+#### Figure: Combined plot of observed and expected trends.
+
+- Values from all sheets in the file `t_gp_activity_counts.xlsx` including:
+    + `admin_only`
+    + `certificate`
+    + `failed_encounter`
+
+```{r, fig.height=8}
+p_gam_trend
+```
+
+#### Figure: Combined plot of observed and expected trends from 2010 onwards only
+
+- Values from all sheets in the file `t_gp_activity_counts.xlsx` including:
+    - `admin_only`
+    - `certificate`
+    - `failed_encounter`
+
+- Also saved as `p_gp_activity_trend_results.png`
+
+```{r, fig.height=8}
+p_gam_trend_2010
+
+ggsave(
+    p_gam_trend_2010,
+    file = s_drive("request-out/p_gp_activity_trend_results.png"),
+    width = 7.5,
+    height = 6,
+    dpi = 300
+)
+```
+
+
+#### Figure: Combined plot of seasonality smoothing terms.
+
+```{r, fig.height=7}
+p1 <- l_negbin$consultation$p_smooth_month           + ggtitle("Consultation")
+p2 <- l_negbin$prescription_only$p_smooth_month      + ggtitle("Prescription Only")
+p3 <- l_negbin$vaccination$p_smooth_month            + ggtitle("Vaccination")
+p4 <- l_negbin$patient_review_monitor$p_smooth_month + ggtitle("Patient review or monitoring")
+p5 <- l_negbin$screening_assessment$p_smooth_month   + ggtitle("Screening or assessment")
+
+p1 + p2 + p3 + p4 + p5 + plot_layout(ncol = 3)
+```
+
+
+#### Table: Activity rate ratios for years 2014 to 2024.
+
+- Year 2019 is used as the reference year.
+- All rate ratios including confidence intervals are in `t_gp_activity_rate_ratios.xlsx`
+
+```{r}
+pretty_coef <- function(x) {
+    x %>%
+    round_half_up(2) %>%
+    format(nsmall = 2, justify = "none")
+}
+
+years <- str_c("year_f", 2014:2024)
+
+d_nb_ref <- data.frame(year = c("2019"))
+
+d_nb_coef %>%
+filter(xvar %in% years) %>%
+mutate(
+    rr = pretty_coef(rr),
+    year = str_replace(xvar, "year_f", "")
+) %>%
+select(activity_cat, year, rr) %>%
+pivot_wider(names_from = activity_cat, values_from = rr) %>%
+bind_rows(d_nb_ref) %>%
+arrange(year) %>%
+mutate(across(.cols = -year, .fns = ~ if_else(year == "2019", "1.00", .x))) %>%
+kable_pretty()
+
+# save to excel file
+wb <- createWorkbook()
+addWorksheet(wb, "estimates")
+
+d_nb_coef %>%
+filter(xvar %in% years) %>%
+mutate(
+    year   = str_replace(xvar, "year_f", ""),
+    rr     = round_half_up(rr, 4),
+    lwr_ci = round_half_up(lwr_ci, 4),
+    upr_ci = round_half_up(upr_ci, 4)
+) %>%
+select(activity_cat, year, rr, lwr_ci, upr_ci) %>%
+writeData(wb, "estimates", x = .)
+
+# write to file
+saveWorkbook(wb, s_drive("request-out/t_gp_activity_rate_ratios.xlsx"), overwrite = TRUE)
+```
+
+
+```{r}
+beep()
+```
