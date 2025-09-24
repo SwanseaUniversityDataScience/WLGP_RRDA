@@ -12,10 +12,11 @@ The WLGP RRDA development involves following main steps:
 - Creating a comprehensive look-up of primary care clinical codes (Read V2, SNOMED, local EMIS/Vision codes, and supplementary categories). 
 - Normalising WLGP RRDA: Converting long-format event list into a structured, three-table format by grouping all events for each patient per day. 
 
-See the main documentation for more details.
+See https://doi.org/10.1101/2025.09.22.25336310 for more details.
 
 ## Notes  
 
 - These scripts are designed for use **within the SAIL Databank** and rely on its specific data schemas.
 - For transparency and reusability, all scripts are provided in this repository.  
 - Users outside of SAIL may need to adapt the scripts to their TRE/SDE environment.  
+
