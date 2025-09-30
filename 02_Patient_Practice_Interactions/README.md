@@ -2,7 +2,7 @@
 
 This directory contains the SQL scripts used to implement a **four-layer classification framework** for assigning patient–practice interaction types in the **WLGP RRDA**.  
 
-The purpose of this framework is to systematically capture the complexity of patient–provider interactions by combining information from official and local clinical codes, supported by text search and logical rules.  
+The purpose of this framework is to systematically capture the complexity of patient–provider interactions by combining information from official and local clinical codes, supported by text search and logical rules. See https://doi.org/10.1101/2025.09.22.25336310 for more details.
 
 
 ## Four-Layer Framework  
@@ -39,5 +39,6 @@ The resulting patient–practice interaction related variables can be combined w
 - Categorise daily patient activity (person–day events).  
 - Classify interactions into **key activity types** (consultations, prescriptions, vaccinations, administrative events, etc.).  
 - Support longitudinal analyses of service delivery and patient access patterns.  
+
 
 
